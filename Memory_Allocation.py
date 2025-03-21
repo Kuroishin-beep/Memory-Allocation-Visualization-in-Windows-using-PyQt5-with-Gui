@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-## @package memory_allocation
-#
-#  This package simulates common memory allocation strategies.
-#  @author      tody
-#  @date        2015/12/25
 
 import numpy as np
 import matplotlib
