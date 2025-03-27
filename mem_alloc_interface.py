@@ -19,9 +19,14 @@ class MainWindow(QMainWindow):
         # Job Panel
         left_panel = self.create_left_panel()
 
+        #Allocation Panel
+        middle_panel = self.create_middle_panel()
+        
+        
         # Combine layouts
         main_layout.addWidget(left_panel)
-
+        main_layout.addWidget(middle_panel)
+    
         # Set layout to main widget
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
@@ -59,15 +64,22 @@ class MainWindow(QMainWindow):
         middle_panel_widget.setFixedSize(400, 900)
         
         #Headers
+        best_fit_label = QLabel("Best Fit Allocation")
+        best_fit_label.setFont(QFont('Consolas', 20))
+        best_fit_label.setStyleSheet("QLabel {font-weight: bold;}")
+        middle_panel.addWidget(best_fit_label)
         
         self.best_fit_output = QTextEdit()
         self.best_fit_output.setReadOnly(True)
         middle_panel.addWidget(self.best_fit_output)
         
+        first_fit_label = QLabel("First Fit Allocation")
+        first_fit_label.setFont(QFont('Consolas', 20))
+        first_fit_label.setStyleSheet("QLabel {font-weight: bold;}")
+        middle_panel.addWidget(first_fit_label)
         
-        
-        self.best_fit_output = QTextEdit()
-        self.best_fit_output.setReadOnly(True)
+        self.first_fit_output = QTextEdit()
+        self.first_fit_output.setReadOnly(True)
         middle_panel.addWidget(self.first_fit_output)
         
         return middle_panel_widget
@@ -100,8 +112,8 @@ class MainWindow(QMainWindow):
         self.update_allocations(jobs, memory)
         
     def update_allocations(self, jobs, memory):
-        best_fit_alloc = best_fit(jobs, memory)
-        first_fit_alloc = first_fit(jobs, memory)
+        best_fit_alloc = bestFit(jobs, memory)
+        first_fit_alloc = firstFit(jobs, memory)
         
         best_fit_text = "\n".join([f"Job {i+1}:  {alloc}" for i, alloc in enumerate(best_fit_alloc)])
         first_fit_text = "\n".join([f"Job {i+1}:  {alloc}" for i, alloc in enumerate(first_fit_alloc)])
