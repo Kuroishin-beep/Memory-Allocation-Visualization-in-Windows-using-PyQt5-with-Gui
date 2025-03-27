@@ -50,8 +50,29 @@ class MainWindow(QMainWindow):
         left_panel.addWidget(self.scroll_area)
 
         return left_panel_widget
+    
+    def create_middle_panel(self):
+        #Container Widget
+        middle_panel_widget = QWidget()
+        middle_panel = QVBoxLayout()
+        middle_panel_widget.setLayout(middle_panel)
+        middle_panel_widget.setFixedSize(400, 900)
+        
+        #Headers
+        
+        self.best_fit_output = QTextEdit()
+        self.best_fit_output.setReadOnly(True)
+        middle_panel.addWidget(self.best_fit_output)
+        
+        
+        
+        self.best_fit_output = QTextEdit()
+        self.best_fit_output.setReadOnly(True)
+        middle_panel.addWidget(self.first_fit_output)
+        
+        return middle_panel_widget
 
-    def populate_job_list(self, jobs):
+    def populate_job_list(self, jobs, memory):
         # Clear previous jobs
         for i in reversed(range(self.scroll_layout.count())): 
             self.scroll_layout.itemAt(i).widget().deleteLater()
@@ -75,17 +96,27 @@ class MainWindow(QMainWindow):
             self.scroll_layout.addWidget(job_widget)
 
         self.scroll_layout.addStretch()
+        
+        self.update_allocations(jobs, memory)
+        
+    def update_allocations(self, jobs, memory):
+        best_fit_alloc = best_fit(jobs, memory)
+        first_fit_alloc = first_fit(jobs, memory)
+        
+        best_fit_text = "\n".join([f"Job {i+1}:  {alloc}" for i, alloc in enumerate(best_fit_alloc)])
+        first_fit_text = "\n".join([f"Job {i+1}:  {alloc}" for i, alloc in enumerate(first_fit_alloc)])
 
+        self.best_fit_output.setText(best_fit_text)
+        self.first_fit_output.setText(first_fit_text)
 
 def main():
     app = QApplication(sys.argv)
     window = MainWindow()
-
     
     mem = randomMemoryStatus()
     free = mem.freeSpaces()
     requests = requestsMemories(free)
-    window.populate_job_list(requests)
+    window.populate_job_list(requests, free)
 
     window.show()
     sys.exit(app.exec_())
