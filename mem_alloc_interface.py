@@ -4,135 +4,172 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 import sys
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
+def simulate_best_fit(jobs, initial_blocks):
+    free_blocks = initial_blocks.copy()
+    allocated = []
+    for job in jobs:
+        suitable = [b for b in free_blocks if b >= job]
+        if not suitable:
+            continue
+        selected = min(suitable)
+        free_blocks.remove(selected)
+        frag = selected - job
+        allocated.append({'size': selected, 'job': job, 'frag': frag})
+    # Combine allocated and remaining free blocks (in their order)
+    blocks = []
+    # Add allocated blocks first, then remaining free blocks
+    blocks.extend(allocated)
+    blocks.extend([{'size': b, 'free': True} for b in free_blocks])
+    return blocks
 
-        # Window setup
+def simulate_first_fit(jobs, initial_blocks):
+    free_blocks = initial_blocks.copy()
+    allocated = []
+    for job in jobs:
+        for i in range(len(free_blocks)):
+            if free_blocks[i] >= job:
+                selected = free_blocks.pop(i)
+                frag = selected - job
+                allocated.append({'size': selected, 'job': job, 'frag': frag})
+                break
+    # Combine allocated and remaining free blocks (in their order)
+    blocks = []
+    blocks.extend(allocated)
+    blocks.extend([{'size': b, 'free': True} for b in free_blocks])
+    return blocks
+
+class MainWindow(QMainWindow):
+    def __init__(self, best_fit_blocks, first_fit_blocks, jobs):
+        super().__init__()
         self.setWindowTitle("Memory Allocation Simulator")
         self.setWindowIcon(QIcon('logo.png'))
-
-        # Main layout
+        
+        # Store the jobs and blocks data
+        self.jobs = jobs
+        self.best_fit_blocks = best_fit_blocks
+        self.first_fit_blocks = first_fit_blocks
+        
+        # Create main widget and layout
         main_widget = QWidget()
-        main_layout = QHBoxLayout()
-
-        # Job Panel
-        left_panel = self.create_left_panel()
-
-        #Allocation Panel
-        middle_panel = self.create_middle_panel()
-        
-        
-        # Combine layouts
-        main_layout.addWidget(left_panel)
-        main_layout.addWidget(middle_panel)
-    
-        # Set layout to main widget
-        main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
-
+        main_layout = QHBoxLayout(main_widget)
+        
+        # Create panels
+        self.left_panel = self.create_left_panel()
+        self.best_fit_panel = self.create_middle_panel("Best Fit", self.best_fit_blocks)
+        self.first_fit_panel = self.create_middle_panel("First Fit", self.first_fit_blocks)
+        
+        # Add panels to layout
+        main_layout.addWidget(self.left_panel)
+        main_layout.addWidget(self.best_fit_panel)
+        main_layout.addWidget(self.first_fit_panel)
+        
         self.showMaximized()
 
     def create_left_panel(self):
-        # Create the container widget
-        left_panel_widget = QWidget()
-        left_panel = QVBoxLayout()
-        left_panel_widget.setLayout(left_panel)
-        left_panel_widget.setFixedSize(400, 900)
-
+        container = QWidget()
+        container.setFixedSize(400, 900)
+        layout = QVBoxLayout(container)
+        
         # Header
         label = QLabel("Job List/Queue")
         label.setFont(QFont('Consolas', 20))
-        label.setStyleSheet("QLabel {font-weight: bold;}")
-        left_panel.addWidget(label)
-
-        # Scroll Area for Jobs
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_layout = QVBoxLayout()
-        self.scroll_area.setLayout(self.scroll_layout)
-
-        left_panel.addWidget(self.scroll_area)
-
-        return left_panel_widget
-    
-    def create_middle_panel(self):
-        #Container Widget
-        middle_panel_widget = QWidget()
-        middle_panel = QVBoxLayout()
-        middle_panel_widget.setLayout(middle_panel)
-        middle_panel_widget.setFixedSize(400, 900)
+        label.setStyleSheet("font-weight: bold;")
+        layout.addWidget(label)
         
-        #Headers
-        best_fit_label = QLabel("Best Fit Allocation")
-        best_fit_label.setFont(QFont('Consolas', 20))
-        best_fit_label.setStyleSheet("QLabel {font-weight: bold;}")
-        middle_panel.addWidget(best_fit_label)
+        # Scroll Area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content = QWidget()
+        self.job_layout = QVBoxLayout(content)
         
-        self.best_fit_output = QTextEdit()
-        self.best_fit_output.setReadOnly(True)
-        middle_panel.addWidget(self.best_fit_output)
-        
-        first_fit_label = QLabel("First Fit Allocation")
-        first_fit_label.setFont(QFont('Consolas', 20))
-        first_fit_label.setStyleSheet("QLabel {font-weight: bold;}")
-        middle_panel.addWidget(first_fit_label)
-        
-        self.first_fit_output = QTextEdit()
-        self.first_fit_output.setReadOnly(True)
-        middle_panel.addWidget(self.first_fit_output)
-        
-        return middle_panel_widget
-
-    def populate_job_list(self, jobs, memory):
-        # Clear previous jobs
-        for i in reversed(range(self.scroll_layout.count())): 
-            self.scroll_layout.itemAt(i).widget().deleteLater()
-
-        # Create job boxes
-        for i, job in enumerate(jobs[:5], 1):
-            job = min(job, 80)  
-
+        # Create job items with original styling
+        for i, job in enumerate(self.jobs[:5], 1):
             job_widget = QWidget()
-            job_layout = QVBoxLayout()
-
-            job_widget.setStyleSheet("QWidget {background-color: #8f9bf2; border-radius: 10px}")
-            job_widget.setMinimumHeight(job*2)
-
+            job_widget.setStyleSheet("background-color: #8f9bf2; border-radius: 10px;")
+            job_widget.setMinimumHeight(min(job, 80) * 2)
+            
+            item_layout = QVBoxLayout(job_widget)
             label = QLabel(f"Job {i}: {job} KB")
             label.setFont(QFont('Consolas', 14))
             label.setAlignment(Qt.AlignCenter)
-            job_layout.addWidget(label)
-
-            job_widget.setLayout(job_layout)
-            self.scroll_layout.addWidget(job_widget)
-
-        self.scroll_layout.addStretch()
+            item_layout.addWidget(label)
+            
+            self.job_layout.addWidget(job_widget)
         
-        self.update_allocations(jobs, memory)
+        self.job_layout.addStretch()
+        scroll.setWidget(content)
+        layout.addWidget(scroll)
         
-    def update_allocations(self, jobs, memory):
-        best_fit_alloc = bestFit(jobs, memory)
-        first_fit_alloc = firstFit(jobs, memory)
-        
-        best_fit_text = "\n".join([f"Job {i+1}:  {alloc}" for i, alloc in enumerate(best_fit_alloc)])
-        first_fit_text = "\n".join([f"Job {i+1}:  {alloc}" for i, alloc in enumerate(first_fit_alloc)])
+        return container
 
-        self.best_fit_output.setText(best_fit_text)
-        self.first_fit_output.setText(first_fit_text)
+    def create_middle_panel(self, title, blocks):
+        container = QWidget()
+        container.setFixedSize(400, 900)
+        layout = QVBoxLayout(container)
+        
+        # Header
+        label = QLabel(title)
+        label.setFont(QFont('Consolas', 20))
+        label.setStyleSheet("font-weight: bold;")
+        layout.addWidget(label)
+        
+        # Scroll Area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content = QWidget()
+        block_layout = QVBoxLayout(content)
+        
+        # Create block items matching left panel style
+        for block in blocks:
+            widget = QWidget()
+            size = block['size']
+            
+            # Color coding
+            if 'job' in block:
+                color = '#99ff99' if block['frag'] == 0 else '#ff9999'
+                text = f"Job: {block['job']}KB\nBlock: {size}KB"
+                if block['frag'] > 0:
+                    text += f"\nFrag: {block['frag']}KB"
+            else:
+                color = '#9999ff'
+                text = f"Free: {size}KB"
+            
+            widget.setStyleSheet(f"""
+                background-color: {color}; 
+                border-radius: 10px;
+                min-height: {min(size, 80)*2}px;
+            """)
+            
+            item_layout = QVBoxLayout(widget)
+            label = QLabel(text)
+            label.setFont(QFont('Consolas', 12))
+            label.setAlignment(Qt.AlignCenter)
+            item_layout.addWidget(label)
+            
+            block_layout.addWidget(widget)
+        
+        block_layout.addStretch()
+        scroll.setWidget(content)
+        layout.addWidget(scroll)
+        
+        return container
 
 def main():
     app = QApplication(sys.argv)
-    window = MainWindow()
     
     mem = randomMemoryStatus()
     free = mem.freeSpaces()
     requests = requestsMemories(free)
-    window.populate_job_list(requests, free)
-
+    
+    # Use first 5 jobs to match left panel display
+    visible_jobs = requests[:5]
+    best_fit_blocks = simulate_best_fit(visible_jobs, free)
+    first_fit_blocks = simulate_first_fit(visible_jobs, free)
+    
+    window = MainWindow(best_fit_blocks, first_fit_blocks, requests)
     window.show()
     sys.exit(app.exec_())
-
 
 if __name__ == '__main__':
     main()
