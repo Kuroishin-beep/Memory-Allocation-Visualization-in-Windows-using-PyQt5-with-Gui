@@ -11,7 +11,6 @@ class MemoryAllocationApp(QWidget):
 
     def initUI(self):
         self.setWindowTitle("Memory Allocation Simulator")
-        self.setGeometry(100, 200, 1100, 500) #Bigger size
         
         # Job List
         self.jobList = QListWidget()
@@ -118,6 +117,8 @@ class MemoryAllocationApp(QWidget):
         # Step Tracking
         self.allocation_steps = []
         self.current_step = 0
+
+        self.showMaximized()
     
     def addJob(self):
         size = self.jobSizeInput.value()
