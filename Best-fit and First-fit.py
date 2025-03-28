@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QListWidget, QComboBox, QSpinBox, QMessageBox, QGraphicsView, QGraphicsScene, QGraphicsRectItem, QTextEdit
-from PyQt5.QtGui import QBrush, QColor, QFont, QPen
-from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
 import sys
 import random
 
@@ -15,6 +15,7 @@ class MemoryAllocationApp(QWidget):
         
         # Job List
         self.jobList = QListWidget()
+        self.jobList.setFixedWidth(220)
         self.addJobBtn = QPushButton("Add Job")
         self.removeJobBtn = QPushButton("Remove Job")
         self.jobSizeInput = QSpinBox()
@@ -22,6 +23,7 @@ class MemoryAllocationApp(QWidget):
         
         # Block List
         self.blockList = QListWidget()
+        self.blockList.setFixedWidth(220)
         self.addBlockBtn = QPushButton("Add Block")
         self.removeBlockBtn = QPushButton("Remove Block")
         self.blockSizeInput = QSpinBox()
@@ -77,6 +79,18 @@ class MemoryAllocationApp(QWidget):
         self.processLog.setMinimumWidth(250) #set a min size for the step by step
         rightLayout.addWidget(self.processLog)
 
+        rightLayout.addWidget(QLabel("Memory List"))  
+        self.memoryTable = QTableWidget()
+        self.memoryTable.setColumnCount(6)
+        self.memoryTable.setHorizontalHeaderLabels([
+            "Block No.", "Memory \nBlock Size", "Job No.", "Job Size", "Status", "Internal \nFragmentation"
+        ])
+        self.memoryTable.setEditTriggers(QTableWidget.NoEditTriggers)  
+        self.memoryTable.setMinimumHeight(150)
+        self.memoryTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        rightLayout.addWidget(self.memoryTable)
+
+
         rightmostLayout.addWidget(QLabel("Visualize Allocation"))  # Move visualization here
         rightmostLayout.addWidget(self.graphicsView)
 
@@ -127,6 +141,7 @@ class MemoryAllocationApp(QWidget):
         self.processLog.clear()
         self.allocation_steps.clear()
         self.current_step = 0
+        self.memoryTable.setRowCount(0)  # Clear the table before each run
         
         algorithm = self.algorithmSelector.currentText()
         jobs = [int(self.jobList.item(i).text().split('-')[1][:-1]) for i in range(self.jobList.count())]
@@ -137,7 +152,9 @@ class MemoryAllocationApp(QWidget):
             return
         
         allocation = self.allocateMemory(jobs, blocks, algorithm)
+        self.populateMemoryTable(allocation, blocks, jobs)
         self.visualizeAllocation(allocation, blocks, jobs)
+
     
     def allocateMemory(self, jobs, blocks, algorithm):
         allocation = [-1] * len(jobs)  # Initialize allocation list (-1 means unallocated)
@@ -171,7 +188,44 @@ class MemoryAllocationApp(QWidget):
         return allocation
 
 
-    
+    def populateMemoryTable(self, allocation, blocks, jobs):
+        self.memoryTable.setRowCount(len(blocks) + 1)  
+        total_block_size = sum(blocks)  
+        total_job_size = 0 
+
+        for i in range(len(blocks)):
+            job_assigned = None
+            for j, alloc in enumerate(allocation):
+                if alloc == i:
+                    job_assigned = j
+                    break
+
+            # Set block details
+            block_no = str(i + 1)
+            block_size = f"{blocks[i]}K"
+            job_no = str(job_assigned + 1) if job_assigned is not None else "N/A"
+            job_size = f"{jobs[job_assigned]}K" if job_assigned is not None else "N/A"
+            status = "Busy" if job_assigned is not None else "Free"
+            internal_frag = f"{blocks[i] - jobs[job_assigned]}K" if job_assigned is not None else ""
+
+            if status == "Busy":
+                total_job_size += jobs[job_assigned]
+
+            # Populate the table
+            self.memoryTable.setItem(i, 0, QTableWidgetItem(block_no))
+            self.memoryTable.setItem(i, 1, QTableWidgetItem(block_size))
+            self.memoryTable.setItem(i, 2, QTableWidgetItem(job_no))
+            self.memoryTable.setItem(i, 3, QTableWidgetItem(job_size))
+            self.memoryTable.setItem(i, 4, QTableWidgetItem(status))
+            self.memoryTable.setItem(i, 5, QTableWidgetItem(internal_frag))
+
+        # Add total block size to the last row
+        total_row = len(blocks)
+        self.memoryTable.setItem(total_row, 0, QTableWidgetItem("Total Available:"))
+        self.memoryTable.setItem(total_row, 1, QTableWidgetItem(f"{total_block_size}K"))
+        self.memoryTable.setItem(total_row, 2, QTableWidgetItem("Total Used:"))
+        self.memoryTable.setItem(total_row, 3, QTableWidgetItem(f"{total_job_size}K"))
+        self.memoryTable.setSpan(total_row, 0, 1, 1)  
 
 
     def visualizeAllocation(self, allocation, blocks, jobs):
@@ -182,7 +236,7 @@ class MemoryAllocationApp(QWidget):
         y_position = 0  # Start from the top
 
         # Generate random colors for jobs
-        job_colors = [QColor(random.randint(50, 255), random.randint(50, 255), random.randint(50, 255)) for _ in jobs]
+        job_colors = [QColor("#6060eb") for _ in jobs]
 
         for i, block in enumerate(blocks):
             block_height = (block / total_memory) * total_height  # Scale block size proportionally
