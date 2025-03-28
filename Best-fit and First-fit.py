@@ -231,18 +231,19 @@ class MemoryAllocationApp(QWidget):
 
     def visualizeAllocation(self, allocation, blocks, jobs):
         self.scene.clear()
-        total_height = 400  # Fixed total height for all blocks combined
-        block_width = 300   # Width of the column
+        total_height = 800  # Fixed total height for all blocks combined 500->800
+        block_width = 400   # Width of the column 200->400
         total_memory = sum(blocks)  # Total memory across all blocks
         y_position = 0  # Start from the top
 
-        # Generate random colors for jobs
-        job_colors = [QColor("#6060eb") for _ in jobs]
+    # Generate unique colors dynamically using HSV color space
+        job_colors = [QColor.fromHsvF(i / len(jobs), 0.7, 0.9) for i in range(len(jobs))]
+
 
         for i, block in enumerate(blocks):
             block_height = (block / total_memory) * total_height  # Scale block size proportionally
             rect = QGraphicsRectItem(0, y_position, block_width, block_height)
-            rect.setBrush(QBrush(QColor("gray")))
+            rect.setBrush(QBrush(QColor("white")))
 
             # Make the block boundary lines bolder
             rect.setPen(QPen(QColor("black"), 3))  # Thicker boundary lines
