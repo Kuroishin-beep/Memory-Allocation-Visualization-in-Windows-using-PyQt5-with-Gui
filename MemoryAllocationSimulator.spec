@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['memory_allocation.py'],
+    ['Best-fit and First-fit.py'],
     pathex=[],
     binaries=[],
     datas=[],
