@@ -190,43 +190,62 @@ class MemoryAllocationApp(QWidget):
 
 
     def populateMemoryTable(self, allocation, blocks, jobs):
-        self.memoryTable.setRowCount(len(blocks) + 1)  
-        total_block_size = sum(blocks)  
-        total_job_size = 0 
+        if self.algorithmSelector.currentText() == "Best-Fit":
+            sorted_blocks_with_indices = sorted(enumerate(blocks), key=lambda x: x[1])
+            
+            sorted_blocks = [block for _, block in sorted_blocks_with_indices]
+            sorted_block_numbers = [idx + 1 for idx, _ in sorted_blocks_with_indices]  
 
-        for i in range(len(blocks)):
+            sorted_allocation = [0] * len(allocation)
+            for job_idx, alloc in enumerate(allocation):
+                if alloc != -1:
+                    new_idx = next(i for i, (old_idx, _) in enumerate(sorted_blocks_with_indices) if old_idx == alloc)
+                    sorted_allocation[job_idx] = new_idx
+                else:
+                    sorted_allocation[job_idx] = -1
+        else:
+            sorted_blocks = blocks
+            sorted_block_numbers = list(range(1, len(blocks) + 1))  # Default block numbers
+            sorted_allocation = allocation
+
+        self.memoryTable.setRowCount(len(sorted_blocks) + 1)
+        total_block_size = sum(sorted_blocks)
+        total_job_size = 0
+
+        for i in range(len(sorted_blocks)):
             job_assigned = None
-            for j, alloc in enumerate(allocation):
+            for j, alloc in enumerate(sorted_allocation):
                 if alloc == i:
                     job_assigned = j
                     break
 
-            # Set block details
-            block_no = str(i + 1)
-            block_size = f"{blocks[i]}K"
+            block_no = str(sorted_block_numbers[i])  # Use sorted block numbers
+            block_size = f"{sorted_blocks[i]}K"
             job_no = str(job_assigned + 1) if job_assigned is not None else "N/A"
             job_size = f"{jobs[job_assigned]}K" if job_assigned is not None else "N/A"
             status = "Busy" if job_assigned is not None else "Free"
-            internal_frag = f"{blocks[i] - jobs[job_assigned]}K" if job_assigned is not None else ""
+            internal_frag = f"{sorted_blocks[i] - jobs[job_assigned]}K" if job_assigned is not None else ""
 
             if status == "Busy":
                 total_job_size += jobs[job_assigned]
 
             # Populate the table
-            self.memoryTable.setItem(i, 0, QTableWidgetItem(block_no))
+            self.memoryTable.setItem(i, 0, QTableWidgetItem(block_no))  # Sorted block number
             self.memoryTable.setItem(i, 1, QTableWidgetItem(block_size))
             self.memoryTable.setItem(i, 2, QTableWidgetItem(job_no))
             self.memoryTable.setItem(i, 3, QTableWidgetItem(job_size))
             self.memoryTable.setItem(i, 4, QTableWidgetItem(status))
             self.memoryTable.setItem(i, 5, QTableWidgetItem(internal_frag))
 
-        # Add total block size to the last row
-        total_row = len(blocks)
+        total_row = len(sorted_blocks)
         self.memoryTable.setItem(total_row, 0, QTableWidgetItem("Total Available:"))
         self.memoryTable.setItem(total_row, 1, QTableWidgetItem(f"{total_block_size}K"))
         self.memoryTable.setItem(total_row, 2, QTableWidgetItem("Total Used:"))
         self.memoryTable.setItem(total_row, 3, QTableWidgetItem(f"{total_job_size}K"))
-        self.memoryTable.setSpan(total_row, 0, 1, 1)  
+        self.memoryTable.setSpan(total_row, 0, 1, 1)
+
+
+
 
 
     def visualizeAllocation(self, allocation, blocks, jobs):
